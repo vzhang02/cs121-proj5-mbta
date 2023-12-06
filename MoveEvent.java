@@ -22,9 +22,15 @@ public class MoveEvent implements Event {
   }
   public void replayAndCheck(MBTA mbta) {
     Station curr = mbta.currTrainLoc(t);
-    Station next = mbta.nexStation(t);
+    Station next = mbta.nextTrainStation(t);
+    if (!mbta.hasTrain(t) || !mbta.hasStation(s1) || !mbta.hasStation(s2)) {
+      throw new IllegalStateException("Simulation does not have specified train or stations");
+    }
     if (curr != s1 && next != s2) {
       throw new IllegalStateException("This move [" + toString() + "] is not a valid event"); 
+    }
+    if (!mbta.stationOpen(s2)) {
+      throw new IllegalStateException("Station " + s2.toString() +" is not available");
     }
     mbta.logMoveEvent(t, s2); 
   }

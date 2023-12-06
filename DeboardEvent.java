@@ -20,18 +20,27 @@ public class DeboardEvent implements Event {
   public List<String> toStringList() {
     return List.of(p.toString(), t.toString(), s.toString());
   }
+
   public void replayAndCheck(MBTA mbta) {
-    if (!mbta.stationContainsPassenger(p, s)) {
+    // check that train, passenger, and station exist in the simulation
+    if (!mbta.hasTrain(t) || !mbta.hasPassenger(p) || !mbta.hasStation(s)) {
+      throw new IllegalStateException("Simulation does not have specified train, station, or passenger");
+    }
+    // check that station does not contain passenger already
+    if (mbta.stationContainsPassenger(p, s)) {
       throw new IllegalStateException("Passenger " + p.toString() + " isn't at station " + s.toString());
     }
-    if (s != mbta.currTrainLoc(t)) {
+    // check that train is at current station
+    if (!mbta.atStation(s, t)) {
       throw new IllegalStateException(s.toString() + " is not the current location of train " + t.toString());
     }
-    if (mbta.trainContainsPassenger(p, t)) {
+    // check that train contains passenger
+    if (!mbta.trainContainsPassenger(p, t)) {
       throw new IllegalStateException("Train " + t.toString() + " does not contain passenger " + p.toString());
     }
+    // check if passenger should deboard here
     if (!mbta.deboardPassenger(p, s, t)) {
-      throw new IllegalStateException("Passenger " + p.toString() + " cannot deboard here");
+      throw new IllegalStateException("Passenger " + p.toString() + " cannot deboard here: " + s.toString());
     }
     mbta.logDeboardEvent(p, t, s); 
   }

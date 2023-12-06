@@ -1,11 +1,12 @@
 import java.io.FileReader;
 import java.util.*;
+
 import com.google.gson.*;
 
 public class MBTA {
   // Configuration
-  private Map<String, List<String>> lines;
-  private Map<String, List<String>> trips;
+  private Map<Train, List<String>> lines;
+  private Map<Passenger, List<String>> trips;
 
   // State
   private Map<Train, List<Passenger>> currTrainPassengers; // train name, list of passengers
@@ -34,38 +35,69 @@ public class MBTA {
     trainDirection = new HashMap<>();
 
     currPassLoc = new HashMap<>();
+    currStationPassengers = new HashMap<>();
   }
 
   // Adds a new transit line with given name and stations
   public void addLine(String name, List<String> stations) {
-    lines.put(name, stations);
+    Train t = Train.make(name); // make train
+    List<String> line = new ArrayList<>(); // initialize list to put in
+    for (String s : stations) { // for each station in line
+      Station stn = Station.make(s);  // make station
+      // add station to currStationPassengers
+      if (!currStationPassengers.containsKey(stn)) {
+        currStationPassengers.put(stn, new ArrayList<>());
+      }
+      line.add(s); // add station name to line
+    }
+    lines.put(t, line);
+    trainDirection.put(t, 1); // set starting direction to forward 
+    // set starting loc to 1st station in line
+    currTrainLoc.put(t, line.get(0)); 
+    trainIndex.put(t, 0);
+    currTrainPassengers.put(t, new ArrayList<>());
   }
 
   // Adds a new planned journey to the simulation
   public void addJourney(String name, List<String> stations) {
-    trips.put(name, stations);
+    Passenger p = Passenger.make(name); 
+    List<String> trip = new ArrayList<>();
+    // for each station in trip
+    for (String s : stations) {
+      trip.add(s); // add station to trip
+    }
+    trips.put(p, trip);
+    // set starting location to 1st station in trip5
+    currPassLoc.put(p, 0); 
+    Station start = Station.make(trip.get(0)); 
+    // add passenger to starting station
+    if (!currStationPassengers.containsKey(start)) {
+        currStationPassengers.put(start, new ArrayList<>());
+      }
+    currStationPassengers.get(start).add(p); 
+    System.out.println("Added " + p.toString() + " to station " + start.toString()); 
   }
 
   // Return normally if initial simulation conditions are satisfied, otherwise
   // raises an exception
   public void checkStart() {
-    for (String train : lines.keySet()) {
+    for (Train train : lines.keySet()) {
       String start = lines.get(train).get(0);
-      if (start != currTrainLoc.get(Train.make(train)).toString() || trainIndex.get(Train.make(train)) != 0) {
+      if (start != currTrainLoc.get(train).toString() || trainIndex.get(train) != 0) {
         throw new IllegalStateException("Train " + train + " is not at starting station");
       }
-      if (!currTrainPassengers.get(Train.make(train)).isEmpty()) { // check if all trains are empty
+      if (!currTrainPassengers.get(train).isEmpty()) { // check if all trains are empty
         throw new IllegalStateException("Train " + train + " is not empty");
       }
     }
-    for (String pass : trips.keySet()) {
-      //String start = trips.get(pass).get(0);
+    for (Passenger pass : trips.keySet()) {
+      String start = trips.get(pass).get(0);
       // pass. curr loc isn't the 1st station in trip and the station doesn't contain the passenger
-      if (currPassLoc.get(Passenger.make(pass)) != 0) {
+      if (currPassLoc.get(pass) != 0) {
         throw new IllegalStateException("Passenger " + pass + " is not at starting station");
       }
-      if (currStationPassengers.get(Station.make(trips.get(pass).get(0))).contains(Passenger.make(pass))) {
-        throw new IllegalStateException("Passenger " + pass + "is not at destination");
+      if (!currStationPassengers.get(Station.make(start)).contains(pass)) {
+        throw new IllegalStateException("Passenger " + pass + " is not at start");
       }
     }
   }
@@ -73,8 +105,10 @@ public class MBTA {
   // Return normally if final simulation conditions are satisfied, otherwise
   // raises an exception
   public void checkEnd() {
-    for (String pass : trips.keySet()) {
-      if (currPassLoc.get(Passenger.make(pass)) != trips.get(pass).size()) {
+    for (Passenger pass : trips.keySet()) {
+      int tripLength = trips.get(pass).size(); 
+      Station dest = Station.make(trips.get(pass).get(tripLength - 1)); 
+      if (currPassLoc.get(pass) != (tripLength - 1) && !currStationPassengers.get(dest).contains(pass)) {
         throw new IllegalStateException("Passenger " + pass + "is not at destination");
       }
     }
@@ -95,39 +129,12 @@ public class MBTA {
       conf = g.fromJson(fr, Config.class); 
       // set up train configuration
       for (String train : conf.lines.keySet()) {
-        Train t = Train.make(train);
-        List<String> line = new ArrayList<>();
-        // for each station in line
-        for (String s : conf.lines.get(train)) {
-          // make station
-          Station stn = Station.make(s);
-          // add station to currStationPassengers
-          if (!currStationPassengers.containsKey(stn)) {
-            currStationPassengers.put(stn, new ArrayList<>());
-          }
-          // add station name to line
-          line.add(s);
-        }
-        addLine(train, line); // add line to simulation
-        trainDirection.put(t, 1); // set starting direction to forward 
-        // set starting loc to 1st station in line
-        currTrainLoc.put(t, line.get(0)); 
-        trainIndex.put(t, 0);
+        addLine(train, conf.lines.get(train));
       }
 
       // set up passenger configuration
       for (String pass : conf.trips.keySet()) {
-        Passenger p = Passenger.make(pass); 
-        List<String> trip = new ArrayList<>();
-        // for each station in trip
-        for (String s : conf.trips.get(p)) {
-          trip.add(s); // add station to trip
-        }
-        addJourney(pass, trip); // add trip to simulation
-        // set starting location to 1st station in trip
-        currPassLoc.put(p, 0);
-        // add passenger to starting station
-        currStationPassengers.get(Station.make(trip.get(0))).add(p);
+        addJourney(pass, conf.trips.get(pass));
       }
 
     } catch (Exception e) {
@@ -135,32 +142,112 @@ public class MBTA {
     }
     
   }
+
+  // returns if passenger exists in the simulation
+  public boolean hasPassenger(Passenger p) {
+    return trips.containsKey(p);
+  }
+
+  // returns if train exists in the simulation
+  public boolean hasTrain(Train t) {
+    return lines.containsKey(t);
+  }
+
+  // returns if train exists in the simulation
+  public boolean hasStation(Station s) {
+    return currStationPassengers.containsKey(s);
+  }
+
+  // checks if train is at station
+  public boolean atStation(Station s, Train t) {
+    return (s.toString() == currTrainLoc.get(t));
+  }
+  
+  // checks if station is available
+  public boolean stationOpen(Station s) {
+    for (Train train : currTrainLoc.keySet()) {
+      if (currTrainLoc.get(train) == s.toString()) {
+        return false;
+      }
+    }
+    return true; 
+  }
+
   // get current Station of train
   public Station currTrainLoc(Train t) {
     return Station.make(currTrainLoc.get(t));
   }
 
-  // get next Station in the line of the train
-  public Station nexStation(Train t) {
-    if (trainDirection.get(t) == 1) { // train moving forward
-      if (trainIndex.get(t) == lines.get(t.toString()).size() - 1) { // train is at end of line
-        return Station.make(lines.get(t.toString()).get(trainIndex.get(t) - 1));
+   // check if statio contains passenger
+  public boolean stationContainsPassenger(Passenger p, Station s) {
+    return currStationPassengers.get(s).contains(p);
+  }
+
+  // checks that train contains passenger
+  public boolean trainContainsPassenger(Passenger p, Train t) {
+    return currTrainPassengers.get(t).contains(p);
+  }
+
+  // check if the passenger gets off here
+  public boolean deboardPassenger(Passenger p, Station s, Train t) {
+    int pos = currPassLoc.get(p).intValue();
+    String sname = s.toString(); // station that event wants to deboard to(curr station)
+    List<String> trip = trips.get(p); // get passenger's trip
+    if (pos >= trip.size() - 1) {
+      return false;
+    }
+    String nextS = trip.get(pos+1); // next station in the trip
+    if (sname == nextS) {
+      return true;
+    } else {
+      for (Train train : lines.keySet()) {
+        if (t != train) {
+          List<String> line = lines.get(t);
+          if (line.contains(sname) && line.contains(nextS)) {
+            return true; 
+          }
+        }
       }
-      return Station.make(lines.get(t.toString()).get(trainIndex.get(t) + 1));
+    }
+    return false;
+  }
+
+  //check if the passenger get on train
+  public boolean boardPassenger(Passenger p, Train t, Station s) {
+    int pos = currPassLoc.get(p).intValue(); // get passengers current position
+    String sname = s.toString(); 
+    List<String> trip = trips.get(p); // get passengers trip
+    if (pos >= trip.size() - 1) {
+      return false;
+    }
+    List<String> line = lines.get(t); // get train line
+    String nextS = trip.get(pos + 1); // get next station
+    // check that the line has the current station and the next station
+    return line.contains(sname) && line.contains(nextS); 
+  }
+
+  // get next Station in the line of the train
+  public Station nextTrainStation(Train t) {
+    if (trainDirection.get(t) == 1) { // train moving forward
+      if (trainIndex.get(t) == lines.get(t).size() - 1) { // train is at end of line
+        return Station.make(lines.get(t).get(trainIndex.get(t) - 1));
+      }
+      return Station.make(lines.get(t).get(trainIndex.get(t) + 1));
     } else { // train is moving backword
       if (trainIndex.get(t) == 0) { // train is at start of line
-        return Station.make(lines.get(t.toString()).get(trainIndex.get(t) + 1));
+        return Station.make(lines.get(t).get(trainIndex.get(t) + 1));
       }
-      return Station.make(lines.get(t.toString()).get(trainIndex.get(t) - 1));
+      return Station.make(lines.get(t).get(trainIndex.get(t) - 1));
     }
   }
 
-  // set the train index
+
+  // move train
   public void logMoveEvent(Train t, Station end) {
     Integer dir = trainDirection.get(t);
     int trainIdx = trainIndex.get(t);
     if (dir == 1) {
-      if (trainIdx == lines.get(t.toString()).size() - 1) { // if at end of the line
+      if (trainIdx == lines.get(t).size() - 1) { // if at end of the line
         dir = -1; // flip direction to backward
         trainIdx--; // go backward
       } 
@@ -178,40 +265,18 @@ public class MBTA {
     currTrainLoc.put(t, end.toString()); // change curr location
   }
 
-  // check if statio contains passenger
-  public boolean stationContainsPassenger(Passenger p, Station s) {
-    return currStationPassengers.get(s).contains(p);
-  }
-
-  public boolean deboardPassenger(Passenger p, Station s, Train t) {
-    int pos = currPassLoc.get(p).intValue();
-    String sname = s.toString();
-    List<String> trip = trips.get(p.toString());
-    String nextS = trip.get(pos+1);  
-    if (nextS != sname) {
-      for (String train : lines.keySet()) {
-        String tname = t.toString();
-        if (tname != train) {
-          List<String> line = lines.get(tname);
-          if (line.contains(nextS)) {
-            return true; 
-          }
-        }
-      }
-    }
-    return (pos == trip.size() - 1);
-    
-  }
-
-  public boolean trainContainsPassenger(Passenger p, Train t) {
-    return currTrainPassengers.get(t).contains(p);
-  }
-
+  // deboard passenger
   public void logDeboardEvent(Passenger p, Train t, Station s) {
     int pos = currPassLoc.get(p).intValue();
     currPassLoc.put(p, Integer.valueOf(pos + 1)); // update passenger location
     currTrainPassengers.get(t).remove(p); // remove passenger from the train
     currStationPassengers.get(s).add(p); // add passenger to current station
+  }
+
+  // board passenger
+  public void logBoardEvent(Passenger p, Train t, Station s) {
+    currTrainPassengers.get(t).add(p); // add passenger from the train
+    currStationPassengers.get(s).remove(p); // remove passenger from current station
   }
 
 }
