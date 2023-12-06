@@ -21,6 +21,18 @@ public class DeboardEvent implements Event {
     return List.of(p.toString(), t.toString(), s.toString());
   }
   public void replayAndCheck(MBTA mbta) {
-    throw new UnsupportedOperationException();
+    if (!mbta.stationContainsPassenger(p, s)) {
+      throw new IllegalStateException("Passenger " + p.toString() + " isn't at station " + s.toString());
+    }
+    if (s != mbta.currTrainLoc(t)) {
+      throw new IllegalStateException(s.toString() + " is not the current location of train " + t.toString());
+    }
+    if (mbta.trainContainsPassenger(p, t)) {
+      throw new IllegalStateException("Train " + t.toString() + " does not contain passenger " + p.toString());
+    }
+    if (!mbta.deboardPassenger(p, s, t)) {
+      throw new IllegalStateException("Passenger " + p.toString() + " cannot deboard here");
+    }
+    mbta.logDeboardEvent(p, t, s); 
   }
 }

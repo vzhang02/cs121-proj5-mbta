@@ -21,6 +21,11 @@ public class BoardEvent implements Event {
     return List.of(p.toString(), t.toString(), s.toString());
   }
   public void replayAndCheck(MBTA mbta) {
+    // check if passenger is at station s
+    // check if train is at station s
+    // check if passenger gets on train here
+    // 
+    
     throw new UnsupportedOperationException();
   }
 }
