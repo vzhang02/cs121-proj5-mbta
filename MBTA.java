@@ -15,6 +15,7 @@ public class MBTA {
   private Map<Train, Integer> trainDirection;         // true is forward, false is backward
  
   private Map<Passenger, Integer> currPassLoc;        // where the passenger is in their trip
+
   private Map<Station, List<Passenger>> currStationPassengers;
   private Map<Station, Train> stationTrain;
 
@@ -80,14 +81,8 @@ public class MBTA {
     if (!currStationPassengers.containsKey(start)) {
         currStationPassengers.put(start, new ArrayList<>());
     }
-    if (stationTrain.get(start) == null) {
-      currStationPassengers.get(start).add(p); 
-      System.out.println("Adding passenger " + p.toString() + " to Station " + start.toString());
-    } else {
-      currTrainPassengers.get(stationTrain.get(start)).add(p);
-      System.out.println("Adding passenger " + p.toString() + " to Train " + stationTrain.get(start).toString());
-    }
-
+    currStationPassengers.get(start).add(p); 
+    System.out.println("Adding passenger " + p.toString() + " to Station " + start.toString());
   }
 
   // Return normally if initial simulation conditions are satisfied, otherwise
@@ -98,9 +93,9 @@ public class MBTA {
       if (start != currTrainLoc.get(train).toString() || trainIndex.get(train) != 0) {
         throw new IllegalStateException("Train " + train + " is not at starting station");
       }
-      // if (!currTrainPassengers.get(train).isEmpty()) { // check if all trains are empty
-      //   throw new IllegalStateException("Train " + train + " is not empty");
-      // }
+      if (!currTrainPassengers.get(train).isEmpty()) { // check if all trains are empty
+        throw new IllegalStateException("Train " + train + " is not empty");
+      }
     }
     for (Passenger pass : trips.keySet()) {
       String start = trips.get(pass).get(0);
@@ -108,12 +103,8 @@ public class MBTA {
       if (currPassLoc.get(pass) != 0) {
         throw new IllegalStateException("Passenger " + pass + " is not at starting station");
       }
-      // if (!currStationPassengers.get(Station.make(start)).contains(pass)) {
-      //   throw new IllegalStateException("Passenger " + pass + " is not at start");
-      // }
-      Train t = stationTrain.get(Station.make(start)); 
-      if (!currTrainPassengers.get(t).contains(pass)) { // check if all trains are empty
-        throw new IllegalStateException("Passenger " + pass.toString() + " is not on Train " + t.toString());
+      if (!currStationPassengers.get(Station.make(start)).contains(pass)) {
+        throw new IllegalStateException("Passenger " + pass + " is not at start");
       }
     }
   }
@@ -124,7 +115,8 @@ public class MBTA {
     for (Passenger pass : trips.keySet()) {
       int tripLength = trips.get(pass).size(); 
       Station dest = Station.make(trips.get(pass).get(tripLength - 1)); 
-      if (currPassLoc.get(pass) != (tripLength - 1) && !currStationPassengers.get(dest).contains(pass)) {
+      if (currPassLoc.get(pass) != (tripLength - 1)
+         && !currStationPassengers.get(dest).contains(pass)) {
         throw new IllegalStateException("Passenger " + pass + " is not at destination");
       }
     }
@@ -156,16 +148,13 @@ public class MBTA {
       for (String train : conf.lines.keySet()) {
         addLine(train, conf.lines.get(train));
       }
-
       // set up passenger configuration
       for (String pass : conf.trips.keySet()) {
         addJourney(pass, conf.trips.get(pass));
       }
-
     } catch (Exception e) {
       e.printStackTrace();
     }
-    
   }
 
   // returns if passenger exists in the simulation

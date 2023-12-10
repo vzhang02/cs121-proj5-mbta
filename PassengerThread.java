@@ -3,6 +3,8 @@ public class PassengerThread extends Thread {
     private Passenger p;
     private Log log;
 
+    private boolean onTrain;
+
     public PassengerThread(MBTA m, Passenger p, Log l) {
         this.mbta = m;
         this.p = p;
@@ -10,10 +12,10 @@ public class PassengerThread extends Thread {
     }
 
     public void run() {
+
         while(!mbta.atDestination(p)) {
-            if (mbta.atStart()) {
-                return;
-            }
+            
         }
     }
 }
+// "Red": ["Davis", "Harvard", "MIT", "MGH"]
