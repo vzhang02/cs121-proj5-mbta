@@ -16,6 +16,9 @@ public class MBTA {
  
   private Map<Passenger, Integer> currPassLoc;        // where the passenger is in their trip
   private Map<Station, List<Passenger>> currStationPassengers;
+  private Map<Station, Train> stationTrain;
+
+
 
   // Configuration class for Gson
   private class Config {
@@ -36,6 +39,7 @@ public class MBTA {
 
     currPassLoc = new HashMap<>();
     currStationPassengers = new HashMap<>();
+    stationTrain = new HashMap<>();
   }
 
   // Adds a new transit line with given name and stations
@@ -50,12 +54,14 @@ public class MBTA {
       }
       line.add(s); // add station name to line
     }
-    lines.put(t, line);
+    Station start = Station.make(line.get(0));
+    lines.put(t, line); // add line
     trainDirection.put(t, 1); // set starting direction to forward 
     // set starting loc to 1st station in line
     currTrainLoc.put(t, line.get(0)); 
     trainIndex.put(t, 0);
     currTrainPassengers.put(t, new ArrayList<>());
+    stationTrain.put(start, t);
   }
 
   // Adds a new planned journey to the simulation
@@ -73,9 +79,15 @@ public class MBTA {
     // add passenger to starting station
     if (!currStationPassengers.containsKey(start)) {
         currStationPassengers.put(start, new ArrayList<>());
-      }
-    currStationPassengers.get(start).add(p); 
-    System.out.println("Added " + p.toString() + " to station " + start.toString()); 
+    }
+    if (stationTrain.get(start) == null) {
+      currStationPassengers.get(start).add(p); 
+      System.out.println("Adding passenger " + p.toString() + " to Station " + start.toString());
+    } else {
+      currTrainPassengers.get(stationTrain.get(start)).add(p);
+      System.out.println("Adding passenger " + p.toString() + " to Train " + stationTrain.get(start).toString());
+    }
+
   }
 
   // Return normally if initial simulation conditions are satisfied, otherwise
@@ -86,9 +98,9 @@ public class MBTA {
       if (start != currTrainLoc.get(train).toString() || trainIndex.get(train) != 0) {
         throw new IllegalStateException("Train " + train + " is not at starting station");
       }
-      if (!currTrainPassengers.get(train).isEmpty()) { // check if all trains are empty
-        throw new IllegalStateException("Train " + train + " is not empty");
-      }
+      // if (!currTrainPassengers.get(train).isEmpty()) { // check if all trains are empty
+      //   throw new IllegalStateException("Train " + train + " is not empty");
+      // }
     }
     for (Passenger pass : trips.keySet()) {
       String start = trips.get(pass).get(0);
@@ -96,8 +108,12 @@ public class MBTA {
       if (currPassLoc.get(pass) != 0) {
         throw new IllegalStateException("Passenger " + pass + " is not at starting station");
       }
-      if (!currStationPassengers.get(Station.make(start)).contains(pass)) {
-        throw new IllegalStateException("Passenger " + pass + " is not at start");
+      // if (!currStationPassengers.get(Station.make(start)).contains(pass)) {
+      //   throw new IllegalStateException("Passenger " + pass + " is not at start");
+      // }
+      Train t = stationTrain.get(Station.make(start)); 
+      if (!currTrainPassengers.get(t).contains(pass)) { // check if all trains are empty
+        throw new IllegalStateException("Passenger " + pass.toString() + " is not on Train " + t.toString());
       }
     }
   }
@@ -109,7 +125,7 @@ public class MBTA {
       int tripLength = trips.get(pass).size(); 
       Station dest = Station.make(trips.get(pass).get(tripLength - 1)); 
       if (currPassLoc.get(pass) != (tripLength - 1) && !currStationPassengers.get(dest).contains(pass)) {
-        throw new IllegalStateException("Passenger " + pass + "is not at destination");
+        throw new IllegalStateException("Passenger " + pass + " is not at destination");
       }
     }
   }
@@ -118,6 +134,15 @@ public class MBTA {
   public void reset() {
     lines.clear();
     trips.clear();
+
+    currTrainPassengers.clear(); 
+    currTrainLoc.clear();          
+    trainIndex.clear();             
+    trainDirection.clear();
+    
+    currPassLoc.clear(); 
+    currStationPassengers.clear();
+    stationTrain.clear();
   }
 
   // adds simulation configuration from a file
@@ -249,17 +274,13 @@ public class MBTA {
     if (dir == 1) {
       if (trainIdx == lines.get(t).size() - 1) { // if at end of the line
         dir = -1; // flip direction to backward
-        trainIdx--; // go backward
       } 
-      trainIdx++; // move forward
-
     } else { // going backward
       if (trainIdx == 0) { // at start of line
         dir = 1; // flip direction to forward
-        trainIdx++; // go forward
       }
-      trainIdx--; // go backward
     }
+    trainIdx += dir;
     trainDirection.put(t, dir); // put new direction
     trainIndex.put(t, trainIdx); // put new index
     currTrainLoc.put(t, end.toString()); // change curr location
@@ -277,6 +298,53 @@ public class MBTA {
   public void logBoardEvent(Passenger p, Train t, Station s) {
     currTrainPassengers.get(t).add(p); // add passenger from the train
     currStationPassengers.get(s).remove(p); // remove passenger from current station
+  }
+
+  public boolean atStart() {
+    try {
+      checkStart();
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
+  }
+  // check if simulation is complete(all passengers have reached destinations)
+  public boolean isFinished() {
+    try {
+      checkEnd();
+    } catch (Exception e) {
+      return false;
+    }
+    return true;
+  }
+
+  // get destination station of passenger
+  public Station getDestination(Passenger p) {
+    List<String> trip = trips.get(p);
+    return Station.make(trips.get(p).get(trip.size()-1));
+  }
+
+  // check if passenger is at destination
+  public boolean atDestination(Passenger p) {
+    Station dest = getDestination(p);
+    return stationContainsPassenger(p, dest) 
+      && trips.get(p).get(currPassLoc.get(p)) == dest.toString(); 
+  }
+
+  public boolean isAvailable(Station s) {
+    return stationTrain.get(s) == null;
+  }
+
+  public void setStationTrain(Station s, Train t) {
+    stationTrain.put(s, t);
+  }
+
+  public List<Train> getTrains() {
+    return new ArrayList<>(lines.keySet());
+  }
+  
+  public List<Passenger> getPassengers() {
+    return new ArrayList<>(trips.keySet());
   }
 
 }

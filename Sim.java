@@ -1,9 +1,27 @@
 import java.io.*;
+import java.util.*;
 
 public class Sim {
 
   public static void run_sim(MBTA mbta, Log log) {
-    throw new UnsupportedOperationException();
+    List<Thread> threads = new ArrayList<>();
+    List<Train> trains = mbta.getTrains();
+    for (Train t : trains) {
+      threads.add(new TrainThread(mbta, t, log));
+    }
+
+    for (Thread t : threads) {
+      t.start();
+    }
+
+    try {
+      for (Thread t : threads) {
+        t.join();
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+
   }
 
   public static void main(String[] args) throws Exception {

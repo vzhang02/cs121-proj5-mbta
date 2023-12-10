@@ -1,0 +1,18 @@
+design.txt
+Valerie Zhang
+Fall 2023
+*******************************************************************************
+
+In my simulation, I will have 2 types of threads: a passenger thread and a 
+train thread. Train threads will run until all passengers have reached their 
+final destination stations. Passenger threads will run until they reach their 
+final destination
+
+The simulation contains two types of locks: station locks and passenger locks.
+Each station will have their own lock that handles the arrival and departure
+of trains. Only one train can hold a given station lock at a time, ensuring 
+that only one train is at a station at a time. Each train will have it's own
+passenger lock which handles boarding and deboarding, and train movement.
+Passengers may only board/deboard if they hold the passenger lock and the
+train can only move if it has the passenger lock and the lock of it's next
+station. 

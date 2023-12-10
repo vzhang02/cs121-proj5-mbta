@@ -1,0 +1,11 @@
+{
+    "lines": {
+      "Green": ["Medford", "Ball", "Harvard", "SMFA"],
+      "Red": ["Davis", "Harvard", "MIT", "MGH"]
+      
+    },
+    "trips": {
+      "Bob": ["Medford", "Harvard", "MGH"],
+      "Alice": ["Davis", "Harvard", "SMFA"]
+    }
+  }
