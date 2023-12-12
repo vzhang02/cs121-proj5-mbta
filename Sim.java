@@ -6,14 +6,19 @@ public class Sim {
   public static void run_sim(MBTA mbta, Log log) {
     List<Thread> threads = new ArrayList<>();
     List<Train> trains = mbta.getTrains();
+    List<Passenger> passengers = mbta.getPassengers();
     for (Train t : trains) {
       threads.add(new TrainThread(mbta, t, log));
+    }
+    
+    for (Passenger p : passengers) {
+      threads.add(new PassengerThread(mbta, p, log));
     }
 
     for (Thread t : threads) {
       t.start();
     }
-
+    
     try {
       for (Thread t : threads) {
         t.join();

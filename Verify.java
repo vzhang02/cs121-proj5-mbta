@@ -5,8 +5,11 @@ public class Verify {
 
   public static void verify(MBTA mbta, Log log) {
     mbta.checkStart();
+    int counter = 0;
     for (Event e : log.events()) {
+      System.out.println("Verifying event #" + counter);
       e.replayAndCheck(mbta);
+      counter++;
     }
     mbta.checkEnd();
   }

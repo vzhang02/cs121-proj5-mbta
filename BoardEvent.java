@@ -33,6 +33,7 @@ public class BoardEvent implements Event {
     if (!mbta.hasStation(s)) {
       throw new IllegalStateException("Simulation does not have Station " + s.toString());
     }
+
     // check that station does contain passenger already
     if (!mbta.stationContainsPassenger(p, s)) {
       throw new IllegalStateException("Passenger " + p.toString() + " isn't at station " + s.toString());

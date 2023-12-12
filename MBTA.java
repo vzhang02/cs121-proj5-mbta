@@ -15,7 +15,6 @@ public class MBTA {
   private Map<Train, Integer> trainDirection;         // true is forward, false is backward
  
   private Map<Passenger, Integer> currPassLoc;        // where the passenger is in their trip
-
   private Map<Station, List<Passenger>> currStationPassengers;
   private Map<Station, Train> stationTrain;
 
@@ -273,6 +272,7 @@ public class MBTA {
     trainDirection.put(t, dir); // put new direction
     trainIndex.put(t, trainIdx); // put new index
     currTrainLoc.put(t, end.toString()); // change curr location
+
   }
 
   // deboard passenger
@@ -316,8 +316,8 @@ public class MBTA {
   // check if passenger is at destination
   public boolean atDestination(Passenger p) {
     Station dest = getDestination(p);
-    return stationContainsPassenger(p, dest) 
-      && trips.get(p).get(currPassLoc.get(p)) == dest.toString(); 
+    
+    return (stationContainsPassenger(p, dest)); 
   }
 
   public boolean isAvailable(Station s) {
@@ -336,5 +336,46 @@ public class MBTA {
     return new ArrayList<>(trips.keySet());
   }
 
+  public Station getPassStation(Passenger p, int index) {
+    return Station.make(trips.get(p).get(index));
+  }
+
+  public Train getStationTrain(Station s) {
+    return stationTrain.get(s);
+  }
+
+  public Train toBoard(Passenger p) {
+    Station curr = Station.make(trips.get(p).get(currPassLoc.get(p)));
+    Station next = Station.make(trips.get(p).get(currPassLoc.get(p) + 1));
+    for (Train t : lines.keySet()) {
+      List<String> line = lines.get(t);
+      if (line.contains(curr.toString()) && line.contains(next.toString())) {
+        return t;
+      }
+    }
+    return null;
+  }
+
+  public int getPassLoc(Passenger p) {
+    return currPassLoc.get(p);
+  }
+
+  // public boolean checkMove(Train t, Station s1, Station s2) {
+  //   if (!hasTrain(t) || !hasStation(s1) || !hasStation(s2)) {
+  //     throw new IllegalStateException("Simulation does not have specified train or stations");
+  //   }
+
+  //   List<String> line = lines.get(t);
+  //   if (!(line.contains(s1.toString()) && line.contains(s2.toString()))) {
+  //     throw new RuntimeException(" ");
+  //   }
+  //   if (s1 != s1 && s2 != s2) {
+  //     throw new IllegalStateException("This move [" + toString() + "] is not a valid event"); 
+  //   }
+  //   if (!mbta.stationOpen(s2)) {
+  //     throw new IllegalStateException("Station " + s2.toString() +" is not available");
+  //   }
+  // }
+ 
 }
 
